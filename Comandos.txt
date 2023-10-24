@@ -1,0 +1,1 @@
+python create_instances.py \ --input_file=../data/Per-training/token_java_pt.txt \ --input_type_file=../data/Per-training/type_java_pt.txt \ --output_file=../data/Per-training/data-instances-pt \ --token_vocab_file=../data/Per-training/tokens_vocab \ --type_vocab_file=../data/Per-training/types_vocab \ --dupe_factor=5
