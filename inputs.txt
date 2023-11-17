@@ -3,3 +3,6 @@
 python run_pretraining.py \   --input_file="./to_" \   --eval_input_file="./to_save" \   --output_dir="./to_save" \   --token_vocab_file="../data/Per-training/pt-instances" \   --do_train=True \   --do_eval=True \   --bert_config_file=bert_config.json \   --train_batch_size=16 \   --max_seq_length=128 \   --max_predictions_per_seq=30 \   --num_train_steps=600000 \   --learning_rate=5e-5 \   --n_gpus=3 \   --gpu=0,1,2
 
 Memory error
+
+python run_pretraining.py \ --input_file=..\data\Per-tuning\pt-instances \ --eval_input_file=..\data\Per-tuning\eval-instances \ --output_dir=..\data\Per-tuning\output.txt \ --token_vocab_file=..\data\Per-training\tokens_vocab \ --do_train=True \ --do_eval=True \ --bert_config_file=bert_config.json \ --train_batch_size=64 \ --max_seq_length=128 \ --max_predictions_per_seq=50 \ --num_train_steps=10000 \ --learning_rate=5e-5 \ --n_gpus=3 \ --gpu=0,1,2
+    
