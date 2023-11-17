@@ -14,18 +14,22 @@
 # limitations under the License.
 """Run masked LM/next sentence masked_lm pre-training for BERT."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from tqdm import tqdm
+from __future__ import absolute_import, division, print_function
+
 import os
+
+from tensorflow.python.distribute.cross_device_ops import \
+    AllReduceCrossDeviceOps
+from tensorflow.python.estimator.estimator import Estimator
+from tensorflow.python.estimator.run_config import RunConfig
+from tqdm import tqdm
+
+
+import tensorflow.compat.v1 as tf
+
 import modeling
 import optimization_gpu
 from create_data_corpus import *
-import tensorflow as tf
-from tensorflow.python.estimator.run_config import RunConfig
-from tensorflow.python.estimator.estimator import Estimator
-from tensorflow.python.distribute.cross_device_ops import AllReduceCrossDeviceOps
 
 flags = tf.flags
 
@@ -577,7 +581,7 @@ def input_fn_builder(input_files,
             # `sloppy` mode means that the interleaving is not exact. This adds
             # even more randomness to the training pipeline.
             d = d.apply(
-                tf.contrib.data.parallel_interleave(
+                tf.data.experimental.parallel_interleave(
                     tf.data.TFRecordDataset,
                     sloppy=is_training,
                     cycle_length=cycle_length))
@@ -593,7 +597,7 @@ def input_fn_builder(input_files,
         # and we *don't* want to drop the remainder, otherwise we wont cover
         # every sample.
         d = d.apply(
-            tf.contrib.data.map_and_batch(
+            tf.data.experimental.map_and_batch(
                 lambda record: _decode_record(record, name_to_features),
                 batch_size=batch_size,
                 num_parallel_batches=num_cpu_threads,
@@ -646,13 +650,14 @@ def main(_):
         tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
             FLAGS.tpu_name, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project)
 
-    is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
-
-    dist_strategy = tf.contrib.distribute.MirroredStrategy(
-        num_gpus=FLAGS.n_gpus,
-        cross_device_ops=AllReduceCrossDeviceOps('nccl', num_packs=FLAGS.n_gpus),
-        # cross_device_ops=AllReduceCrossDeviceOps('hierarchical_copy'),
+    is_per_host = tf.estimator.tpu.InputPipelineConfig.PER_HOST_V2
+    
+    dist_strategy = tf.distribute.MirroredStrategy(
+        devices=["/gpu:0","/gpu:1"],
+        #cross_device_ops=AllReduceCrossDeviceOps('nccl', num_packs=FLAGS.n_gpus),
+        cross_device_ops=AllReduceCrossDeviceOps('hierarchical_copy'),
     )
+    tf.disable_v2_behavior()
     log_every_n_steps = 8
     run_config = RunConfig(
         train_distribute=dist_strategy,
@@ -683,13 +688,12 @@ def main(_):
 
     # If TPU is not available, this will fall back to normal Estimator on CPU
     # or GPU.
-    # estimator = Estimator(
-    #     model_fn=model_fn,
-    #     params={},
-    #     config=run_config)
     estimator = Estimator(
         model_fn=model_fn,
-        config=run_config, )
+        config=run_config)
+    #estimator = Estimator(
+    #    model_fn=model_fn,
+    #    config=run_config, )
 
     if FLAGS.do_train:
         tf.logging.info("***** Running training *****")
@@ -747,4 +751,5 @@ if __name__ == "__main__":
     flags.mark_flag_as_required("input_file")
     flags.mark_flag_as_required("bert_config_file")
     flags.mark_flag_as_required("output_dir")
+    tf.app.run()
     tf.app.run()
